@@ -5,5 +5,6 @@ CREATE TABLE IF NOT EXISTS recipes (
     ingredients TEXT NOT NULL,
     instructions TEXT NOT NULL,
     cooking_time INTEGER NOT NULL,
+    image_data BYTEA,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

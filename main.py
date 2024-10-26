@@ -5,6 +5,8 @@ from database import (
     update_recipe, delete_recipe, get_recipe_by_id
 )
 from utils import validate_recipe_input, format_time
+from PIL import Image
+import io
 
 # Initialize the database
 init_db()
@@ -42,6 +44,11 @@ def display_recipes():
             col1, col2, col3 = st.columns([3, 1, 1])
             
             with col1:
+                # Display recipe image if available
+                if recipe['image_data']:
+                    image = Image.open(io.BytesIO(recipe['image_data']))
+                    st.image(image, caption=recipe['title'], use_column_width=True)
+                
                 st.subheader("Ingredients")
                 st.write(recipe['ingredients'])
                 
@@ -88,6 +95,23 @@ def add_recipe_form():
         value=editing_recipe['cooking_time'] if editing_recipe else 30
     )
     
+    # Image upload
+    uploaded_file = st.file_uploader("Upload Recipe Image (optional)", type=['png', 'jpg', 'jpeg'])
+    image_data = None
+    
+    if uploaded_file is not None:
+        # Read and resize the image
+        image = Image.open(uploaded_file)
+        # Resize image while maintaining aspect ratio
+        max_size = (800, 800)
+        image.thumbnail(max_size, Image.LANCZOS)
+        # Convert to bytes for storage
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format=image.format or 'JPEG')
+        image_data = img_byte_arr.getvalue()
+        # Display preview
+        st.image(image, caption="Image Preview", use_column_width=True)
+    
     if st.button("Save Recipe"):
         errors = validate_recipe_input(title, category, ingredients, instructions, cooking_time)
         
@@ -100,12 +124,13 @@ def add_recipe_form():
                     update_recipe(
                         editing_recipe['id'],
                         title, category, ingredients,
-                        instructions, cooking_time
+                        instructions, cooking_time,
+                        image_data if image_data is not None else editing_recipe.get('image_data')
                     )
                     st.success("Recipe updated successfully!")
                     del st.session_state['editing_recipe']
                 else:
-                    add_recipe(title, category, ingredients, instructions, cooking_time)
+                    add_recipe(title, category, ingredients, instructions, cooking_time, image_data)
                     st.success("Recipe added successfully!")
                 
                 # Clear the form
@@ -128,6 +153,10 @@ def search_recipe_form():
         st.subheader(f"Found {len(recipes)} recipes:")
         for recipe in recipes:
             with st.expander(f"📖 {recipe['title']} ({recipe['category']})"):
+                if recipe['image_data']:
+                    image = Image.open(io.BytesIO(recipe['image_data']))
+                    st.image(image, caption=recipe['title'], use_column_width=True)
+                
                 st.write("**Ingredients:**")
                 st.write(recipe['ingredients'])
                 

@@ -28,17 +28,17 @@ def init_db():
     cur.close()
     conn.close()
 
-def add_recipe(title, category, ingredients, instructions, cooking_time):
+def add_recipe(title, category, ingredients, instructions, cooking_time, image_data=None):
     """Add a new recipe to the database."""
     conn = get_db_connection()
     cur = conn.cursor()
     
     try:
         cur.execute("""
-            INSERT INTO recipes (title, category, ingredients, instructions, cooking_time)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO recipes (title, category, ingredients, instructions, cooking_time, image_data)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
-        """, (title, category, ingredients, instructions, cooking_time))
+        """, (title, category, ingredients, instructions, cooking_time, image_data))
         recipe_id = cur.fetchone()[0]
         conn.commit()
         return recipe_id
@@ -77,17 +77,24 @@ def search_recipes(search_term):
     conn.close()
     return recipes
 
-def update_recipe(recipe_id, title, category, ingredients, instructions, cooking_time):
+def update_recipe(recipe_id, title, category, ingredients, instructions, cooking_time, image_data=None):
     """Update an existing recipe."""
     conn = get_db_connection()
     cur = conn.cursor()
     
     try:
-        cur.execute("""
-            UPDATE recipes 
-            SET title=%s, category=%s, ingredients=%s, instructions=%s, cooking_time=%s
-            WHERE id=%s
-        """, (title, category, ingredients, instructions, cooking_time, recipe_id))
+        if image_data is not None:
+            cur.execute("""
+                UPDATE recipes 
+                SET title=%s, category=%s, ingredients=%s, instructions=%s, cooking_time=%s, image_data=%s
+                WHERE id=%s
+            """, (title, category, ingredients, instructions, cooking_time, image_data, recipe_id))
+        else:
+            cur.execute("""
+                UPDATE recipes 
+                SET title=%s, category=%s, ingredients=%s, instructions=%s, cooking_time=%s
+                WHERE id=%s
+            """, (title, category, ingredients, instructions, cooking_time, recipe_id))
         conn.commit()
     except Exception as e:
         conn.rollback()
