@@ -4,7 +4,7 @@ from database import (
     init_db, add_recipe, get_all_recipes, search_recipes,
     update_recipe, delete_recipe, get_recipe_by_id
 )
-from utils import validate_recipe_input, format_time
+from utils import validate_recipe_input, format_time, scale_ingredients
 from PIL import Image
 import io
 
@@ -49,13 +49,29 @@ def display_recipes():
                     image = Image.open(io.BytesIO(recipe['image_data']))
                     st.image(image, caption=recipe['title'], use_column_width=True)
                 
+                # Add servings scaling
+                scale_factor = st.slider(
+                    "Scale Recipe",
+                    min_value=0.5,
+                    max_value=4.0,
+                    value=1.0,
+                    step=0.5,
+                    key=f"scale_{recipe['id']}"
+                )
+                
                 st.subheader("Ingredients")
-                st.write(recipe['ingredients'])
+                if scale_factor == 1.0:
+                    st.write(recipe['ingredients'])
+                else:
+                    scaled_ingredients = scale_ingredients(recipe['ingredients'], scale_factor)
+                    st.write(scaled_ingredients)
+                    st.caption("Note: Scaled quantities are rounded for convenience.")
                 
                 st.subheader("Instructions")
                 st.write(recipe['instructions'])
                 
-                st.text(f"⏱️ Cooking Time: {format_time(recipe['cooking_time'])}")
+                scaled_time = int(recipe['cooking_time'] * scale_factor)
+                st.text(f"⏱️ Cooking Time: {format_time(scaled_time)}")
             
             with col2:
                 if st.button("Edit", key=f"edit_{recipe['id']}"):
@@ -81,10 +97,14 @@ def add_recipe_form():
         index=["Breakfast", "Lunch", "Dinner", "Dessert", "Snack"].index(editing_recipe['category'])
         if editing_recipe else 0
     )
+    
+    st.write("Enter ingredients (one per line, include quantity and unit, e.g., '2 cups flour')")
     ingredients = st.text_area(
-        "Ingredients (one per line)",
-        value=editing_recipe['ingredients'] if editing_recipe else ""
+        "Ingredients",
+        value=editing_recipe['ingredients'] if editing_recipe else "",
+        help="Format: quantity unit ingredient (e.g., '2 cups flour')"
     )
+    
     instructions = st.text_area(
         "Instructions",
         value=editing_recipe['instructions'] if editing_recipe else ""
@@ -157,13 +177,29 @@ def search_recipe_form():
                     image = Image.open(io.BytesIO(recipe['image_data']))
                     st.image(image, caption=recipe['title'], use_column_width=True)
                 
+                # Add servings scaling
+                scale_factor = st.slider(
+                    "Scale Recipe",
+                    min_value=0.5,
+                    max_value=4.0,
+                    value=1.0,
+                    step=0.5,
+                    key=f"search_scale_{recipe['id']}"
+                )
+                
                 st.write("**Ingredients:**")
-                st.write(recipe['ingredients'])
+                if scale_factor == 1.0:
+                    st.write(recipe['ingredients'])
+                else:
+                    scaled_ingredients = scale_ingredients(recipe['ingredients'], scale_factor)
+                    st.write(scaled_ingredients)
+                    st.caption("Note: Scaled quantities are rounded for convenience.")
                 
                 st.write("**Instructions:**")
                 st.write(recipe['instructions'])
                 
-                st.text(f"⏱️ Cooking Time: {format_time(recipe['cooking_time'])}")
+                scaled_time = int(recipe['cooking_time'] * scale_factor)
+                st.text(f"⏱️ Cooking Time: {format_time(scaled_time)}")
 
 if __name__ == "__main__":
     main()
