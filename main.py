@@ -123,6 +123,6 @@ elif page == "Add New Recipe":
                         ingredients_data=ingredients_data
                     )
                     st.success("Recipe added successfully!")
-                    st.experimental_rerun()
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Failed to add recipe: {e}")
