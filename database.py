@@ -18,13 +18,27 @@ def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # Read and execute the schema file
-    with open('schema.sql', 'r') as f:
-        cur.execute(f.read())
-    
-    conn.commit()
-    cur.close()
-    conn.close()
+    try:
+        # Drop existing tables in correct order
+        cur.execute("""
+            DROP TABLE IF EXISTS recipe_ingredients CASCADE;
+            DROP TABLE IF EXISTS recipes CASCADE;
+            DROP TABLE IF EXISTS ingredients CASCADE;
+            DROP TABLE IF EXISTS categories CASCADE;
+        """)
+        
+        # Read and execute the schema file
+        with open('schema.sql', 'r') as f:
+            cur.execute(f.read())
+        
+        conn.commit()
+        print("Database schema successfully initialized")
+    except Exception as e:
+        conn.rollback()
+        raise Exception(f"Failed to initialize database: {str(e)}")
+    finally:
+        cur.close()
+        conn.close()
 
 def get_categories():
     """Get all categories from the database."""
@@ -48,7 +62,10 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
             VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
         """, (title, description, instructions, cooking_time, servings, category_id))
         
-        recipe_id = cur.fetchone()['id']
+        result = cur.fetchone()
+        if not result:
+            raise Exception("Failed to create recipe")
+        recipe_id = result['id']
         
         # Process ingredients
         for ingredient in ingredients_data:
@@ -59,7 +76,10 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
             if result is None:
                 cur.execute("INSERT INTO ingredients (name) VALUES (%s) RETURNING id", 
                           (ingredient['name'],))
-                ingredient_id = cur.fetchone()['id']
+                result = cur.fetchone()
+                if not result:
+                    raise Exception("Failed to create ingredient")
+                ingredient_id = result['id']
             else:
                 ingredient_id = result['id']
             
