@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon-192x192.png">
+    <!-- Streamlit head elements will be injected here -->
+    ${head}
+    <style>
+        /* Mobile-friendly styles */
+        @media (max-width: 768px) {
+            .stButton button {
+                width: 100%;
+                margin: 5px 0;
+            }
+            .stTextInput input,
+            .stTextArea textarea,
+            .stSelectbox select {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+            .stMarkdown {
+                font-size: 14px;
+            }
+        }
+    </style>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered:', registration);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+</head>
+<body>
+    ${body}
+</body>
+</html>

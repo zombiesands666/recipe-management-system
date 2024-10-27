@@ -3,12 +3,42 @@ from database import (
     init_db, get_categories, add_recipe, get_recipes,
     get_recipe, get_recipe_ingredients
 )
+import os
+from streamlit.components.v1 import html
 
 # Initialize the database
 try:
     init_db()
 except Exception as e:
     st.error(f"Database initialization failed: {e}")
+
+# Configure the page
+st.set_page_config(
+    page_title="Recipe Management System",
+    page_icon="🍳",
+    layout="wide"
+)
+
+# Custom CSS for mobile responsiveness
+st.markdown("""
+<style>
+    .stButton > button {
+        width: 100%;
+    }
+    .stTextInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        font-size: 16px !important;
+    }
+    @media (max-width: 768px) {
+        .row-widget.stButton {
+            margin: 5px 0;
+        }
+        .stMarkdown {
+            font-size: 14px;
+        }
+    }
+</style>
+""", unsafe_allow_html=True)
 
 st.title("Recipe Management System")
 st.write("Welcome to your personal recipe collection!")
@@ -49,19 +79,22 @@ if page == "View Recipes":
         if not filtered_recipes:
             st.info("No recipes found matching your search criteria.")
         
-        for recipe in filtered_recipes:
-            with st.expander(f"{recipe['title']} ({recipe['category_name']})"):
-                st.write(f"**Description:** {recipe['description']}")
-                st.write(f"**Cooking Time:** {recipe['cooking_time']} minutes")
-                st.write(f"**Servings:** {recipe['servings']}")
-                
-                st.write("**Ingredients:**")
-                ingredients = get_recipe_ingredients(recipe['id'])
-                for ing in ingredients:
-                    st.write(f"- {ing['quantity']} {ing['unit']} {ing['name']}")
-                
-                st.write("**Instructions:**")
-                st.write(recipe['instructions'])
+        # Use columns for grid layout on larger screens
+        cols = st.columns(2)
+        for idx, recipe in enumerate(filtered_recipes):
+            with cols[idx % 2]:
+                with st.expander(f"{recipe['title']} ({recipe['category_name']})"):
+                    st.write(f"**Description:** {recipe['description']}")
+                    st.write(f"**Cooking Time:** {recipe['cooking_time']} minutes")
+                    st.write(f"**Servings:** {recipe['servings']}")
+                    
+                    st.write("**Ingredients:**")
+                    ingredients = get_recipe_ingredients(recipe['id'])
+                    for ing in ingredients:
+                        st.write(f"- {ing['quantity']} {ing['unit']} {ing['name']}")
+                    
+                    st.write("**Instructions:**")
+                    st.write(recipe['instructions'])
 
     except Exception as e:
         st.error(f"Failed to load recipes: {e}")
@@ -123,6 +156,41 @@ elif page == "Add New Recipe":
                         ingredients_data=ingredients_data
                     )
                     st.success("Recipe added successfully!")
-                    st.rerun()
+                    st.experimental_rerun()
                 except Exception as e:
                     st.error(f"Failed to add recipe: {e}")
+
+# Add PWA install prompt
+install_prompt = """
+<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+     background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;">
+    <p style="margin: 0;">Install Recipe App on your device!</p>
+    <button onclick="installPWA()" style="background-color: #f63366; color: white; border: none; 
+            padding: 8px 16px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
+        Install
+    </button>
+</div>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('install-prompt').style.display = 'block';
+});
+
+function installPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            }
+            deferredPrompt = null;
+            document.getElementById('install-prompt').style.display = 'none';
+        });
+    }
+}
+</script>
+"""
+
+st.components.v1.html(install_prompt, height=100)
