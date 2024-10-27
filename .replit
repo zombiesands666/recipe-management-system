@@ -15,6 +15,10 @@ author = "agent"
 task = "workflow.run"
 args = "Recipe Manager"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Generate Icons"
+
 [[workflows.workflow]]
 name = "Recipe Manager"
 author = "agent"
@@ -26,6 +30,17 @@ agentRequireRestartOnSave = false
 task = "shell.exec"
 args = "streamlit run main.py"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Generate Icons"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 generate_icons.py"
 
 [deployment]
 run = ["sh", "-c", "streamlit run main.py"]

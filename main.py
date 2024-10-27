@@ -37,8 +37,72 @@ st.markdown("""
             font-size: 14px;
         }
     }
+    #pwa-install {
+        background-color: #f63366;
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    #pwa-install button {
+        background-color: white;
+        color: #f63366;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# Add PWA install prompt in sidebar
+install_prompt = """
+<div id="pwa-install" style="display: none;">
+    <p style="margin: 0;">📱 Install Recipe App on your device!</p>
+    <p style="font-size: 12px; margin: 5px 0;">Access your recipes offline and get a better mobile experience</p>
+    <button onclick="installPWA()">Install App</button>
+</div>
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('pwa-install').style.display = 'block';
+});
+
+function installPWA() {
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            }
+            deferredPrompt = null;
+            document.getElementById('pwa-install').style.display = 'none';
+        });
+    }
+}
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/service-worker.js')
+            .then(registration => {
+                console.log('ServiceWorker registration successful');
+            })
+            .catch(error => {
+                console.error('ServiceWorker registration failed:', error);
+            });
+    });
+}
+</script>
+"""
+
+# Add the install prompt to the sidebar at the top
+st.sidebar.markdown(install_prompt, unsafe_allow_html=True)
 
 st.title("Recipe Management System")
 st.write("Welcome to your personal recipe collection!")
@@ -156,41 +220,6 @@ elif page == "Add New Recipe":
                         ingredients_data=ingredients_data
                     )
                     st.success("Recipe added successfully!")
-                    st.experimental_rerun()
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Failed to add recipe: {e}")
-
-# Add PWA install prompt
-install_prompt = """
-<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
-     background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;">
-    <p style="margin: 0;">Install Recipe App on your device!</p>
-    <button onclick="installPWA()" style="background-color: #f63366; color: white; border: none; 
-            padding: 8px 16px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
-        Install
-    </button>
-</div>
-<script>
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('install-prompt').style.display = 'block';
-});
-
-function installPWA() {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-            }
-            deferredPrompt = null;
-            document.getElementById('install-prompt').style.display = 'none';
-        });
-    }
-}
-</script>
-"""
-
-st.components.v1.html(install_prompt, height=100)
