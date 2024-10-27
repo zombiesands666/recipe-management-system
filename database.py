@@ -35,3 +35,99 @@ def get_categories():
     cur.close()
     conn.close()
     return categories
+
+def add_recipe(title, description, instructions, cooking_time, servings, category_id, ingredients_data):
+    """Add a new recipe with ingredients."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        # Insert recipe
+        cur.execute("""
+            INSERT INTO recipes (title, description, instructions, cooking_time, servings, category_id)
+            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
+        """, (title, description, instructions, cooking_time, servings, category_id))
+        
+        recipe_id = cur.fetchone()['id']
+        
+        # Process ingredients
+        for ingredient in ingredients_data:
+            # Check if ingredient exists, if not create it
+            cur.execute("SELECT id FROM ingredients WHERE name = %s", (ingredient['name'],))
+            result = cur.fetchone()
+            
+            if result is None:
+                cur.execute("INSERT INTO ingredients (name) VALUES (%s) RETURNING id", 
+                          (ingredient['name'],))
+                ingredient_id = cur.fetchone()['id']
+            else:
+                ingredient_id = result['id']
+            
+            # Add to recipe_ingredients
+            cur.execute("""
+                INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
+                VALUES (%s, %s, %s, %s)
+            """, (recipe_id, ingredient_id, ingredient['quantity'], ingredient['unit']))
+        
+        conn.commit()
+        return recipe_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+def get_recipes():
+    """Get all recipes with their categories."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("""
+        SELECT r.*, c.name as category_name
+        FROM recipes r
+        LEFT JOIN categories c ON r.category_id = c.id
+        ORDER BY r.title
+    """)
+    recipes = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    return recipes
+
+def get_recipe_ingredients(recipe_id):
+    """Get ingredients for a specific recipe."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("""
+        SELECT i.name, ri.quantity, ri.unit
+        FROM recipe_ingredients ri
+        JOIN ingredients i ON ri.ingredient_id = i.id
+        WHERE ri.recipe_id = %s
+    """, (recipe_id,))
+    ingredients = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    return ingredients
+
+def get_recipe(recipe_id):
+    """Get a specific recipe with all its details."""
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("""
+        SELECT r.*, c.name as category_name
+        FROM recipes r
+        LEFT JOIN categories c ON r.category_id = c.id
+        WHERE r.id = %s
+    """, (recipe_id,))
+    recipe = cur.fetchone()
+    
+    if recipe:
+        recipe['ingredients'] = get_recipe_ingredients(recipe_id)
+    
+    cur.close()
+    conn.close()
+    return recipe
