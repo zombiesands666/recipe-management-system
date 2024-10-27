@@ -19,9 +19,37 @@ page = st.sidebar.selectbox("Choose an action", ["View Recipes", "Add New Recipe
 if page == "View Recipes":
     st.subheader("Your Recipes")
     
+    # Add search functionality
+    search_col1, search_col2 = st.columns(2)
+    with search_col1:
+        search_query = st.text_input("Search recipes by title")
+    with search_col2:
+        category_filter = st.selectbox(
+            "Filter by category",
+            ["All Categories"] + [cat['name'] for cat in get_categories()]
+        )
+    
     try:
         recipes = get_recipes()
-        for recipe in recipes:
+        filtered_recipes = recipes
+        
+        # Apply search filters
+        if search_query:
+            filtered_recipes = [
+                recipe for recipe in filtered_recipes 
+                if search_query.lower() in recipe['title'].lower()
+            ]
+        
+        if category_filter != "All Categories":
+            filtered_recipes = [
+                recipe for recipe in filtered_recipes 
+                if recipe['category_name'] == category_filter
+            ]
+        
+        if not filtered_recipes:
+            st.info("No recipes found matching your search criteria.")
+        
+        for recipe in filtered_recipes:
             with st.expander(f"{recipe['title']} ({recipe['category_name']})"):
                 st.write(f"**Description:** {recipe['description']}")
                 st.write(f"**Cooking Time:** {recipe['cooking_time']} minutes")
