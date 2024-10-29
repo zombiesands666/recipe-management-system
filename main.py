@@ -19,89 +19,17 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for mobile responsiveness and bottom navigation
+# Custom CSS for mobile responsiveness
 st.markdown("""
 <style>
-    /* General mobile optimizations */
     .stButton > button {
         width: 100%;
-        min-height: 44px; /* Better touch targets */
     }
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea {
         font-size: 16px !important;
     }
-    
-    /* Android tablet specific styles */
-    @media (min-width: 768px) and (max-width: 1024px) {
-        #pwa-install {
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            margin: 0 -1rem;
-            border-radius: 0;
-            padding: 20px;
-            background-color: #f63366;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-        }
-        #pwa-install button {
-            padding: 15px 30px;
-            font-size: 18px;
-            width: auto;
-            min-width: 200px;
-            margin: 10px auto;
-            display: block;
-        }
-        .install-header {
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-        #install-instructions {
-            font-size: 16px !important;
-            line-height: 1.5;
-            margin: 15px 0;
-        }
-        /* Larger touch targets for tablets */
-        .recipe-card {
-            padding: 20px;
-            margin: 15px 0;
-        }
-        .bottom-nav {
-            display: none; /* Hide bottom nav on tablets */
-        }
-    }
-    
-    /* Mobile styles */
-    @media (max-width: 767px) {
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: white;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px;
-            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
-            z-index: 1000;
-        }
-        .bottom-nav a {
-            text-decoration: none;
-            color: #262730;
-            padding: 8px 12px;
-            border-radius: 5px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 12px;
-        }
-        .bottom-nav a.active {
-            background-color: #f63366;
-            color: white;
-        }
-        .main-content {
-            padding-bottom: 70px;
-        }
+    @media (max-width: 768px) {
         .row-widget.stButton {
             margin: 5px 0;
         }
@@ -109,170 +37,145 @@ st.markdown("""
             font-size: 14px;
         }
     }
-    
-    /* PWA Install prompt styling */
-    #pwa-install {
-        background-color: #f63366;
-        color: white;
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        text-align: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    #pwa-install button {
-        background-color: white;
-        color: #f63366;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-        margin-top: 10px;
-        font-size: 16px;
-        transition: all 0.3s ease;
-    }
-    #pwa-install button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-    
-    /* Android-specific install button */
-    #android-install-button {
-        display: none;
-        background-color: #f63366;
-        color: white;
-        border: none;
-        padding: 15px 30px;
-        border-radius: 8px;
-        font-size: 18px;
-        font-weight: bold;
-        margin: 20px auto;
-        cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        transition: all 0.3s ease;
-    }
-    #android-install-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    }
-    
-    /* Offline status indicator */
-    #offline-status {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background-color: #ff4b4b;
-        color: white;
-        text-align: center;
-        padding: 5px;
-        z-index: 1000;
-        display: none;
-    }
-    
-    /* Recipe card improvements */
-    .recipe-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 10px;
-        padding: 15px;
-        margin-bottom: 15px;
-        transition: transform 0.3s ease;
-        cursor: pointer;
-        touch-action: pan-y pinch-zoom;
-    }
-    .recipe-card:hover {
-        transform: translateY(-2px);
-    }
 </style>
-
-<div id="offline-status">
-    You are currently offline. Changes will be synced when you're back online.
-</div>
 """, unsafe_allow_html=True)
 
-# Enhanced PWA install prompt with platform-specific instructions
+st.title("Recipe Management System")
+st.write("Welcome to your personal recipe collection!")
+
+# Sidebar navigation
+page = st.sidebar.selectbox("Choose an action", ["View Recipes", "Add New Recipe"])
+
+if page == "View Recipes":
+    st.subheader("Your Recipes")
+    
+    # Add search functionality
+    search_col1, search_col2 = st.columns(2)
+    with search_col1:
+        search_query = st.text_input("Search recipes by title")
+    with search_col2:
+        category_filter = st.selectbox(
+            "Filter by category",
+            ["All Categories"] + [cat['name'] for cat in get_categories()]
+        )
+    
+    try:
+        recipes = get_recipes()
+        filtered_recipes = recipes
+        
+        # Apply search filters
+        if search_query:
+            filtered_recipes = [
+                recipe for recipe in filtered_recipes 
+                if search_query.lower() in recipe['title'].lower()
+            ]
+        
+        if category_filter != "All Categories":
+            filtered_recipes = [
+                recipe for recipe in filtered_recipes 
+                if recipe['category_name'] == category_filter
+            ]
+        
+        if not filtered_recipes:
+            st.info("No recipes found matching your search criteria.")
+        
+        # Use columns for grid layout on larger screens
+        cols = st.columns(2)
+        for idx, recipe in enumerate(filtered_recipes):
+            with cols[idx % 2]:
+                with st.expander(f"{recipe['title']} ({recipe['category_name']})"):
+                    st.write(f"**Description:** {recipe['description']}")
+                    st.write(f"**Cooking Time:** {recipe['cooking_time']} minutes")
+                    st.write(f"**Servings:** {recipe['servings']}")
+                    
+                    st.write("**Ingredients:**")
+                    ingredients = get_recipe_ingredients(recipe['id'])
+                    for ing in ingredients:
+                        st.write(f"- {ing['quantity']} {ing['unit']} {ing['name']}")
+                    
+                    st.write("**Instructions:**")
+                    st.write(recipe['instructions'])
+
+    except Exception as e:
+        st.error(f"Failed to load recipes: {e}")
+
+elif page == "Add New Recipe":
+    st.subheader("Add New Recipe")
+    
+    with st.form("recipe_form"):
+        title = st.text_input("Recipe Title")
+        description = st.text_area("Description")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            cooking_time = st.number_input("Cooking Time (minutes)", min_value=1)
+        with col2:
+            servings = st.number_input("Servings", min_value=1)
+        
+        # Category selection
+        categories = get_categories()
+        category_options = {cat['name']: cat['id'] for cat in categories}
+        category = st.selectbox("Category", options=list(category_options.keys()))
+        
+        # Dynamic ingredient input
+        st.subheader("Ingredients")
+        num_ingredients = st.number_input("Number of ingredients", min_value=1, max_value=20)
+        ingredients_data = []
+        
+        for i in range(int(num_ingredients)):
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                ingredient_name = st.text_input(f"Ingredient {i+1} name")
+            with col2:
+                quantity = st.number_input(f"Quantity {i+1}", min_value=0.0, step=0.1)
+            with col3:
+                unit = st.text_input(f"Unit {i+1} (e.g., g, ml, cups)")
+            
+            if ingredient_name and quantity and unit:
+                ingredients_data.append({
+                    "name": ingredient_name,
+                    "quantity": quantity,
+                    "unit": unit
+                })
+        
+        instructions = st.text_area("Cooking Instructions")
+        submit_button = st.form_submit_button("Add Recipe")
+        
+        if submit_button:
+            if not title or not instructions or not ingredients_data:
+                st.error("Please fill in all required fields")
+            else:
+                try:
+                    recipe_id = add_recipe(
+                        title=title,
+                        description=description,
+                        instructions=instructions,
+                        cooking_time=cooking_time,
+                        servings=servings,
+                        category_id=category_options[category],
+                        ingredients_data=ingredients_data
+                    )
+                    st.success("Recipe added successfully!")
+                    st.experimental_rerun()
+                except Exception as e:
+                    st.error(f"Failed to add recipe: {e}")
+
+# Add PWA install prompt
 install_prompt = """
-<div id="pwa-install" style="display: none;">
-    <h3 class="install-header" style="margin: 0;">📱 Install Recipe App</h3>
-    <p style="margin: 10px 0;">Get the best experience with our app!</p>
-    <div id="install-instructions" style="font-size: 14px; margin: 10px 0;">
-        <!-- Instructions will be inserted here by JavaScript -->
-    </div>
-    <button onclick="installPWA()" id="install-button">Install App</button>
+<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
+     background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;">
+    <p style="margin: 0;">Install Recipe App on your device!</p>
+    <button onclick="installPWA()" style="background-color: #f63366; color: white; border: none; 
+            padding: 8px 16px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
+        Install
+    </button>
 </div>
-
-<button id="android-install-button" onclick="installPWA()" style="display: none;">
-    Install Recipe App on Your Tablet
-</button>
-
 <script>
 let deferredPrompt;
-const installDiv = document.getElementById('pwa-install');
-const instructionsDiv = document.getElementById('install-instructions');
-const installButton = document.getElementById('install-button');
-const androidInstallButton = document.getElementById('android-install-button');
-
-// Platform-specific instructions
-function updateInstallInstructions() {
-    const ua = navigator.userAgent;
-    let instructions = '';
-    
-    if (/iPhone|iPad|iPod/.test(ua)) {
-        instructions = '1. Tap the share button (📤)<br>2. Scroll down and tap "Add to Home Screen"';
-        installButton.style.display = 'none';
-        androidInstallButton.style.display = 'none';
-    } else if (/Android/.test(ua)) {
-        const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1024;
-        if (isTablet) {
-            instructions = 'Install our app for the best tablet experience:';
-            androidInstallButton.style.display = 'block';
-            installButton.style.display = 'none';
-        } else {
-            instructions = 'Tap "Install App" to add to your home screen';
-            androidInstallButton.style.display = 'none';
-            installButton.style.display = 'block';
-        }
-    } else {
-        instructions = 'Click "Install App" to add to your desktop';
-        androidInstallButton.style.display = 'none';
-    }
-    instructionsDiv.innerHTML = instructions;
-}
-
-// Check if app is installed
-async function checkIfInstalled() {
-    if ('getInstalledRelatedApps' in navigator) {
-        const relatedApps = await navigator.getInstalledRelatedApps();
-        return relatedApps.some(app => app.id === 'com.recipe.app');
-    }
-    return false;
-}
-
-// Check online status and update UI
-function updateOnlineStatus() {
-    const offlineStatus = document.getElementById('offline-status');
-    if (navigator.onLine) {
-        offlineStatus.style.display = 'none';
-    } else {
-        offlineStatus.style.display = 'block';
-    }
-}
-
-window.addEventListener('online', updateOnlineStatus);
-window.addEventListener('offline', updateOnlineStatus);
-window.addEventListener('resize', updateInstallInstructions);
-
-// PWA installation
-window.addEventListener('beforeinstallprompt', async (e) => {
+window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    
-    const isInstalled = await checkIfInstalled();
-    if (!isInstalled) {
-        installDiv.style.display = 'block';
-        updateInstallInstructions();
-    }
+    document.getElementById('install-prompt').style.display = 'block';
 });
 
 function installPWA() {
@@ -281,121 +184,13 @@ function installPWA() {
         deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
                 console.log('User accepted the install prompt');
-                // Hide both install buttons after successful installation
-                installDiv.style.display = 'none';
-                androidInstallButton.style.display = 'none';
             }
             deferredPrompt = null;
+            document.getElementById('install-prompt').style.display = 'none';
         });
     }
 }
-
-// Register service worker with better error handling
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', async () => {
-        try {
-            const registration = await navigator.serviceWorker.register('/static/service-worker.js');
-            console.log('ServiceWorker registration successful with scope:', registration.scope);
-            
-            // Check if service worker is active
-            if (registration.active) {
-                console.log('Service Worker is active');
-            }
-            
-            // Listen for service worker updates
-            registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                console.log('Service Worker update found!');
-                
-                newWorker.addEventListener('statechange', () => {
-                    console.log('Service Worker state changed to:', newWorker.state);
-                });
-            });
-            
-        } catch (error) {
-            console.error('ServiceWorker registration failed:', error);
-            // Show error message to user
-            const offlineStatus = document.getElementById('offline-status');
-            offlineStatus.innerHTML = 'Failed to enable offline support. Please refresh the page.';
-            offlineStatus.style.display = 'block';
-        }
-    });
-}
-
-// Verify manifest and icons are loaded correctly
-async function verifyPWAAssets() {
-    try {
-        // Check manifest
-        const manifestResponse = await fetch('/static/manifest.json');
-        if (!manifestResponse.ok) {
-            console.error('Failed to load manifest.json');
-        }
-        
-        // Check icons
-        const iconSizes = ['192x192', '512x512'];
-        for (const size of iconSizes) {
-            const iconResponse = await fetch(`/static/icon-${size}.png`);
-            if (!iconResponse.ok) {
-                console.error(`Failed to load icon-${size}.png`);
-            }
-        }
-    } catch (error) {
-        console.error('Error verifying PWA assets:', error);
-    }
-}
-
-// Run verification on page load
-verifyPWAAssets();
-
-// Add touch event listeners for swipe gestures on recipe cards
-document.addEventListener('DOMContentLoaded', () => {
-    let touchStartX = 0;
-    let touchEndX = 0;
-    
-    const cards = document.querySelectorAll('.recipe-card');
-    cards.forEach(card => {
-        card.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-        });
-        
-        card.addEventListener('touchend', e => {
-            touchEndX = e.changedTouches[0].screenX;
-            handleSwipe(card);
-        });
-    });
-    
-    function handleSwipe(card) {
-        const swipeThreshold = 50;
-        const diff = touchEndX - touchStartX;
-        
-        if (Math.abs(diff) > swipeThreshold) {
-            if (diff > 0) {
-                // Swipe right - favorite recipe
-                card.classList.add('favorited');
-            } else {
-                // Swipe left - hide recipe
-                card.style.display = 'none';
-            }
-        }
-    }
-});
 </script>
 """
 
-# Add the install prompt to the sidebar at the top
-st.sidebar.markdown(install_prompt, unsafe_allow_html=True)
-
-# Add bottom navigation for mobile
-bottom_nav = """
-<div class="bottom-nav">
-    <a href="?page=View+Recipes" class="nav-item">
-        📖<br>Recipes
-    </a>
-    <a href="?page=Add+New+Recipe" class="nav-item">
-        ➕<br>Add Recipe
-    </a>
-</div>
-"""
-
-# Add bottom navigation at the end of the page
-st.markdown(bottom_nav, unsafe_allow_html=True)
+st.components.v1.html(install_prompt, height=100)
