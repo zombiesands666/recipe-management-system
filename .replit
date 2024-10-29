@@ -19,6 +19,10 @@ args = "Recipe Manager"
 task = "workflow.run"
 args = "Generate Icons"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Recipe Parser Test"
+
 [[workflows.workflow]]
 name = "Recipe Manager"
 author = "agent"
@@ -41,6 +45,20 @@ agentRequireRestartOnSave = false
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "python3 generate_icons.py"
+
+[[workflows.workflow]]
+name = "Recipe Parser Test"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python3 termux-url-opener https://www.allrecipes.com/recipe/24074/alysias-basic-meat-lasagna/"
 
 [deployment]
 run = ["sh", "-c", "streamlit run main.py"]
