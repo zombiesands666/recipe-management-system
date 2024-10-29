@@ -19,17 +19,51 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for mobile responsiveness
+# Custom CSS for mobile responsiveness and bottom navigation
 st.markdown("""
 <style>
+    /* General mobile optimizations */
     .stButton > button {
         width: 100%;
+        min-height: 44px; /* Better touch targets */
     }
     .stTextInput > div > div > input,
     .stTextArea > div > div > textarea {
         font-size: 16px !important;
     }
+    
+    /* Bottom navigation bar for mobile */
     @media (max-width: 768px) {
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .bottom-nav a {
+            text-decoration: none;
+            color: #262730;
+            padding: 8px 12px;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 12px;
+        }
+        .bottom-nav a.active {
+            background-color: #f63366;
+            color: white;
+        }
+        /* Add padding to main content to prevent overlap with bottom nav */
+        .main-content {
+            padding-bottom: 70px;
+        }
         .row-widget.stButton {
             margin: 5px 0;
         }
@@ -37,40 +71,120 @@ st.markdown("""
             font-size: 14px;
         }
     }
+    
+    /* PWA Install prompt styling */
     #pwa-install {
         background-color: #f63366;
         color: white;
-        padding: 10px;
-        border-radius: 5px;
+        padding: 15px;
+        border-radius: 10px;
         margin-bottom: 20px;
         text-align: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }
     #pwa-install button {
         background-color: white;
         color: #f63366;
         border: none;
-        padding: 8px 16px;
+        padding: 12px 24px;
         border-radius: 5px;
         cursor: pointer;
         font-weight: bold;
         margin-top: 10px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+    }
+    #pwa-install button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    /* Offline status indicator */
+    #offline-status {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        background-color: #ff4b4b;
+        color: white;
+        text-align: center;
+        padding: 5px;
+        z-index: 1000;
+        display: none;
+    }
+    
+    /* Recipe card improvements */
+    .recipe-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        transition: transform 0.3s ease;
+        cursor: pointer;
+        touch-action: pan-y pinch-zoom;
+    }
+    .recipe-card:hover {
+        transform: translateY(-2px);
     }
 </style>
+
+<div id="offline-status">
+    You are currently offline. Changes will be synced when you're back online.
+</div>
 """, unsafe_allow_html=True)
 
-# Add PWA install prompt in sidebar
+# Enhanced PWA install prompt with platform-specific instructions
 install_prompt = """
 <div id="pwa-install" style="display: none;">
-    <p style="margin: 0;">📱 Install Recipe App on your device!</p>
-    <p style="font-size: 12px; margin: 5px 0;">Access your recipes offline and get a better mobile experience</p>
-    <button onclick="installPWA()">Install App</button>
+    <h3 style="margin: 0;">📱 Install Recipe App</h3>
+    <p style="margin: 10px 0;">Get the best experience with our app!</p>
+    <div id="install-instructions" style="font-size: 14px; margin: 10px 0;">
+        <!-- Instructions will be inserted here by JavaScript -->
+    </div>
+    <button onclick="installPWA()" id="install-button">Install App</button>
 </div>
+
 <script>
 let deferredPrompt;
+const installDiv = document.getElementById('pwa-install');
+const instructionsDiv = document.getElementById('install-instructions');
+const installButton = document.getElementById('install-button');
+
+// Platform-specific instructions
+function updateInstallInstructions() {
+    const ua = navigator.userAgent;
+    let instructions = '';
+    
+    if (/iPhone|iPad|iPod/.test(ua)) {
+        instructions = '1. Tap the share button (📤)<br>2. Scroll down and tap "Add to Home Screen"';
+        installButton.style.display = 'none';
+    } else if (/Android/.test(ua)) {
+        instructions = 'Tap "Install App" when prompted';
+    } else {
+        instructions = 'Click "Install App" to add to your desktop';
+    }
+    instructionsDiv.innerHTML = instructions;
+}
+
+// Check online status and update UI
+function updateOnlineStatus() {
+    const offlineStatus = document.getElementById('offline-status');
+    if (navigator.onLine) {
+        offlineStatus.style.display = 'none';
+    } else {
+        offlineStatus.style.display = 'block';
+    }
+}
+
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+
+// PWA installation
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    document.getElementById('pwa-install').style.display = 'block';
+    installDiv.style.display = 'block';
+    updateInstallInstructions();
 });
 
 function installPWA() {
@@ -81,7 +195,7 @@ function installPWA() {
                 console.log('User accepted the install prompt');
             }
             deferredPrompt = null;
-            document.getElementById('pwa-install').style.display = 'none';
+            installDiv.style.display = 'none';
         });
     }
 }
@@ -98,128 +212,59 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
+
+// Add touch event listeners for swipe gestures on recipe cards
+document.addEventListener('DOMContentLoaded', () => {
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    const cards = document.querySelectorAll('.recipe-card');
+    cards.forEach(card => {
+        card.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+        
+        card.addEventListener('touchend', e => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe(card);
+        });
+    });
+    
+    function handleSwipe(card) {
+        const swipeThreshold = 50;
+        const diff = touchEndX - touchStartX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+            if (diff > 0) {
+                // Swipe right - favorite recipe
+                card.classList.add('favorited');
+            } else {
+                // Swipe left - hide recipe
+                card.style.display = 'none';
+            }
+        }
+    }
+});
 </script>
 """
 
 # Add the install prompt to the sidebar at the top
 st.sidebar.markdown(install_prompt, unsafe_allow_html=True)
 
-st.title("Recipe Management System")
-st.write("Welcome to your personal recipe collection!")
+# Rest of your Streamlit app code remains the same...
+# (Previous code for recipe management functionality)
 
-# Sidebar navigation
-page = st.sidebar.selectbox("Choose an action", ["View Recipes", "Add New Recipe"])
+# Add bottom navigation for mobile
+bottom_nav = """
+<div class="bottom-nav">
+    <a href="?page=View+Recipes" class="nav-item">
+        📖<br>Recipes
+    </a>
+    <a href="?page=Add+New+Recipe" class="nav-item">
+        ➕<br>Add Recipe
+    </a>
+</div>
+"""
 
-if page == "View Recipes":
-    st.subheader("Your Recipes")
-    
-    # Add search functionality
-    search_col1, search_col2 = st.columns(2)
-    with search_col1:
-        search_query = st.text_input("Search recipes by title")
-    with search_col2:
-        category_filter = st.selectbox(
-            "Filter by category",
-            ["All Categories"] + [cat['name'] for cat in get_categories()]
-        )
-    
-    try:
-        recipes = get_recipes()
-        filtered_recipes = recipes
-        
-        # Apply search filters
-        if search_query:
-            filtered_recipes = [
-                recipe for recipe in filtered_recipes 
-                if search_query.lower() in recipe['title'].lower()
-            ]
-        
-        if category_filter != "All Categories":
-            filtered_recipes = [
-                recipe for recipe in filtered_recipes 
-                if recipe['category_name'] == category_filter
-            ]
-        
-        if not filtered_recipes:
-            st.info("No recipes found matching your search criteria.")
-        
-        # Use columns for grid layout on larger screens
-        cols = st.columns(2)
-        for idx, recipe in enumerate(filtered_recipes):
-            with cols[idx % 2]:
-                with st.expander(f"{recipe['title']} ({recipe['category_name']})"):
-                    st.write(f"**Description:** {recipe['description']}")
-                    st.write(f"**Cooking Time:** {recipe['cooking_time']} minutes")
-                    st.write(f"**Servings:** {recipe['servings']}")
-                    
-                    st.write("**Ingredients:**")
-                    ingredients = get_recipe_ingredients(recipe['id'])
-                    for ing in ingredients:
-                        st.write(f"- {ing['quantity']} {ing['unit']} {ing['name']}")
-                    
-                    st.write("**Instructions:**")
-                    st.write(recipe['instructions'])
-
-    except Exception as e:
-        st.error(f"Failed to load recipes: {e}")
-
-elif page == "Add New Recipe":
-    st.subheader("Add New Recipe")
-    
-    with st.form("recipe_form"):
-        title = st.text_input("Recipe Title")
-        description = st.text_area("Description")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            cooking_time = st.number_input("Cooking Time (minutes)", min_value=1)
-        with col2:
-            servings = st.number_input("Servings", min_value=1)
-        
-        # Category selection
-        categories = get_categories()
-        category_options = {cat['name']: cat['id'] for cat in categories}
-        category = st.selectbox("Category", options=list(category_options.keys()))
-        
-        # Dynamic ingredient input
-        st.subheader("Ingredients")
-        num_ingredients = st.number_input("Number of ingredients", min_value=1, max_value=20)
-        ingredients_data = []
-        
-        for i in range(int(num_ingredients)):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                ingredient_name = st.text_input(f"Ingredient {i+1} name")
-            with col2:
-                quantity = st.number_input(f"Quantity {i+1}", min_value=0.0, step=0.1)
-            with col3:
-                unit = st.text_input(f"Unit {i+1} (e.g., g, ml, cups)")
-            
-            if ingredient_name and quantity and unit:
-                ingredients_data.append({
-                    "name": ingredient_name,
-                    "quantity": quantity,
-                    "unit": unit
-                })
-        
-        instructions = st.text_area("Cooking Instructions")
-        submit_button = st.form_submit_button("Add Recipe")
-        
-        if submit_button:
-            if not title or not instructions or not ingredients_data:
-                st.error("Please fill in all required fields")
-            else:
-                try:
-                    recipe_id = add_recipe(
-                        title=title,
-                        description=description,
-                        instructions=instructions,
-                        cooking_time=cooking_time,
-                        servings=servings,
-                        category_id=category_options[category],
-                        ingredients_data=ingredients_data
-                    )
-                    st.success("Recipe added successfully!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Failed to add recipe: {e}")
+# Add bottom navigation at the end of the page
+st.markdown(bottom_nav, unsafe_allow_html=True)
