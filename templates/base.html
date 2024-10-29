@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#f63366">
+    <meta name="description" content="Recipe Management System - Your personal recipe collection manager">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="apple-touch-icon" href="/static/icon-192x192.png">
+    <!-- Streamlit head elements will be injected here -->
+    ${head}
+    <style>
+        /* Mobile-friendly styles */
+        @media (max-width: 768px) {
+            .stButton button {
+                width: 100%;
+                margin: 5px 0;
+            }
+            .stTextInput input,
+            .stTextArea textarea,
+            .stSelectbox select {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+            .stMarkdown {
+                font-size: 14px;
+            }
+        }
+        #installButton {
+            display: none;
+            background-color: #f63366;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        #installButton:hover {
+            background-color: #d62b5b;
+        }
+    </style>
+</head>
+<body>
+    ${body}
+    <script>
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/static/service-worker.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registered:', registration);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed:', error);
+                    });
+            });
+        }
+
+        // Install Button Logic
+        let deferredPrompt;
+        window.addEventListener('load', function() {
+            const installButton = document.getElementById('installButton');
+            if (installButton) {
+                installButton.style.display = 'none';
+                
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    installButton.style.display = 'block';
+                });
+
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const result = await deferredPrompt.userChoice;
+                        if (result.outcome === 'accepted') {
+                            console.log('User accepted the install prompt');
+                        }
+                        deferredPrompt = null;
+                        installButton.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

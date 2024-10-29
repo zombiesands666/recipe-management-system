@@ -1,10 +1,18 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from database import (
     init_db, get_categories, add_recipe, get_recipes,
     get_recipe, get_recipe_ingredients
 )
 from conversions import UnitConverter
 import os
+
+def load_template():
+    with open('templates/base.html', 'r') as f:
+        return components.html(f.read(), height=0)
+
+# Load the PWA template
+load_template()
 
 # Initialize the database
 try:
@@ -19,7 +27,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for mobile responsiveness and install button
+# Custom CSS for mobile responsiveness
 st.markdown("""
 <style>
     .stButton > button {
@@ -36,21 +44,6 @@ st.markdown("""
         .stMarkdown {
             font-size: 14px;
         }
-    }
-    #installButton {
-        display: none;
-        background-color: #f63366;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-        width: 100%;
-        margin-top: 10px;
-        font-weight: bold;
-    }
-    #installButton:hover {
-        background-color: #d62b5b;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -79,7 +72,6 @@ st.sidebar.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Main content
 if selected_page == "View Recipes":
     st.subheader("Your Recipes")
     
