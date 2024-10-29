@@ -37,7 +37,39 @@ st.markdown("""
             font-size: 14px;
         }
     }
+    #installButton {
+        display: none;
+        background-color: #f63366;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100%;
+        margin-top: 10px;
+        font-weight: bold;
+    }
+    #installButton:hover {
+        background-color: #d62b5b;
+    }
 </style>
+
+<script>
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        document.getElementById('installButton').style.display = 'block';
+    });
+
+    document.getElementById('installButton').addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const result = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+        }
+    });
+</script>
 """, unsafe_allow_html=True)
 
 # Initialize session state if not exists
@@ -53,6 +85,16 @@ selected_page = st.sidebar.radio(
     ["View Recipes", "Add New Recipe", "Unit Converter"],
     key="navigation"
 )
+
+# Add install button to sidebar
+st.sidebar.markdown("""
+<div style="margin-top: 20px; padding: 10px; border-top: 1px solid #e6e6e6;">
+    <h3 style="margin-bottom: 10px;">Install App</h3>
+    <button id="installButton">
+        Install Recipe App
+    </button>
+</div>
+""", unsafe_allow_html=True)
 
 # Main content
 if selected_page == "View Recipes":
