@@ -19,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS for mobile responsiveness
+# Custom CSS for mobile responsiveness and install button
 st.markdown("""
 <style>
     .stButton > button {
@@ -53,23 +53,6 @@ st.markdown("""
         background-color: #d62b5b;
     }
 </style>
-
-<script>
-    let deferredPrompt;
-    window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault();
-        deferredPrompt = e;
-        document.getElementById('installButton').style.display = 'block';
-    });
-
-    document.getElementById('installButton').addEventListener('click', async () => {
-        if (deferredPrompt) {
-            deferredPrompt.prompt();
-            const result = await deferredPrompt.userChoice;
-            deferredPrompt = null;
-        }
-    });
-</script>
 """, unsafe_allow_html=True)
 
 # Initialize session state if not exists

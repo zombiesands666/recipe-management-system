@@ -41,5 +41,33 @@
 </head>
 <body>
     ${body}
+    <script>
+        let deferredPrompt;
+        
+        window.addEventListener('load', function() {
+            const installButton = document.getElementById('installButton');
+            if (installButton) {
+                installButton.style.display = 'none';
+                
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    installButton.style.display = 'block';
+                });
+
+                installButton.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const result = await deferredPrompt.userChoice;
+                        if (result.outcome === 'accepted') {
+                            console.log('User accepted the install prompt');
+                        }
+                        deferredPrompt = null;
+                        installButton.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
