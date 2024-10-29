@@ -19,14 +19,6 @@ def init_db():
     cur = conn.cursor()
     
     try:
-        # Drop existing tables in correct order
-        cur.execute("""
-            DROP TABLE IF EXISTS recipe_ingredients CASCADE;
-            DROP TABLE IF EXISTS recipes CASCADE;
-            DROP TABLE IF EXISTS ingredients CASCADE;
-            DROP TABLE IF EXISTS categories CASCADE;
-        """)
-        
         # Read and execute the schema file
         with open('schema.sql', 'r') as f:
             cur.execute(f.read())
@@ -50,17 +42,17 @@ def get_categories():
     conn.close()
     return categories
 
-def add_recipe(title, description, instructions, cooking_time, servings, category_id, ingredients_data):
+def add_recipe(title, description, instructions, cooking_time, servings, category_id, ingredients_data, user_id):
     """Add a new recipe with ingredients."""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
     try:
-        # Insert recipe
+        # Insert recipe with user_id
         cur.execute("""
-            INSERT INTO recipes (title, description, instructions, cooking_time, servings, category_id)
-            VALUES (%s, %s, %s, %s, %s, %s) RETURNING id
-        """, (title, description, instructions, cooking_time, servings, category_id))
+            INSERT INTO recipes (title, description, instructions, cooking_time, servings, category_id, user_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
+        """, (title, description, instructions, cooking_time, servings, category_id, user_id))
         
         result = cur.fetchone()
         if not result:
@@ -69,7 +61,6 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
         
         # Process ingredients
         for ingredient in ingredients_data:
-            # Check if ingredient exists, if not create it
             cur.execute("SELECT id FROM ingredients WHERE name = %s", (ingredient['name'],))
             result = cur.fetchone()
             
@@ -83,7 +74,6 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
             else:
                 ingredient_id = result['id']
             
-            # Add to recipe_ingredients
             cur.execute("""
                 INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
                 VALUES (%s, %s, %s, %s)
@@ -98,17 +88,26 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
         cur.close()
         conn.close()
 
-def get_recipes():
+def get_recipes(user_id=None):
     """Get all recipes with their categories."""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    cur.execute("""
-        SELECT r.*, c.name as category_name
-        FROM recipes r
-        LEFT JOIN categories c ON r.category_id = c.id
-        ORDER BY r.title
-    """)
+    if user_id:
+        cur.execute("""
+            SELECT r.*, c.name as category_name
+            FROM recipes r
+            LEFT JOIN categories c ON r.category_id = c.id
+            WHERE r.user_id = %s
+            ORDER BY r.title
+        """, (user_id,))
+    else:
+        cur.execute("""
+            SELECT r.*, c.name as category_name
+            FROM recipes r
+            LEFT JOIN categories c ON r.category_id = c.id
+            ORDER BY r.title
+        """)
     recipes = cur.fetchall()
     
     cur.close()
@@ -132,17 +131,24 @@ def get_recipe_ingredients(recipe_id):
     conn.close()
     return ingredients
 
-def get_recipe(recipe_id):
+def get_recipe(recipe_id, user_id=None):
     """Get a specific recipe with all its details."""
     conn = get_db_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     
-    cur.execute("""
+    query = """
         SELECT r.*, c.name as category_name
         FROM recipes r
         LEFT JOIN categories c ON r.category_id = c.id
         WHERE r.id = %s
-    """, (recipe_id,))
+    """
+    params = [recipe_id]
+    
+    if user_id:
+        query += " AND r.user_id = %s"
+        params.append(user_id)
+    
+    cur.execute(query, params)
     recipe = cur.fetchone()
     
     if recipe:
