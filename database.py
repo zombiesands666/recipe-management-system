@@ -3,6 +3,14 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import SimpleConnectionPool
 from contextlib import contextmanager
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Global connection pool
 _pool = None
@@ -16,8 +24,11 @@ def init_connection_pool():
         # Check if all required environment variables are present
         missing_vars = [var for var in required_env_vars if not os.getenv(var)]
         if missing_vars:
-            raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
+            error_msg = f"Missing required environment variables: {', '.join(missing_vars)}"
+            logger.error(error_msg)
+            raise EnvironmentError(error_msg)
         
+        logger.info("Initializing database connection pool")
         _pool = SimpleConnectionPool(
             minconn=1,
             maxconn=10,
@@ -27,8 +38,11 @@ def init_connection_pool():
             password=os.getenv('PGPASSWORD'),
             port=os.getenv('PGPORT')
         )
+        logger.info("Database connection pool initialized successfully")
     except Exception as e:
-        raise ConnectionError(f"Failed to initialize connection pool: {str(e)}")
+        error_msg = f"Failed to initialize connection pool: {str(e)}"
+        logger.error(error_msg)
+        raise ConnectionError(error_msg)
 
 @contextmanager
 def get_db_connection():
@@ -40,36 +54,46 @@ def get_db_connection():
     conn = None
     try:
         conn = _pool.getconn()
+        logger.debug("Acquired database connection from pool")
         yield conn
     except psycopg2.Error as e:
-        raise ConnectionError(f"Database connection error: {str(e)}")
+        error_msg = f"Database connection error: {str(e)}"
+        logger.error(error_msg)
+        raise ConnectionError(error_msg)
     finally:
         if conn:
             _pool.putconn(conn)
+            logger.debug("Released database connection back to pool")
 
 def init_db():
     """Initialize the database with the schema."""
+    logger.info("Starting database initialization")
     with get_db_connection() as conn:
         try:
             with conn.cursor() as cur:
-                # Read and execute the schema file
                 with open('schema.sql', 'r') as f:
                     cur.execute(f.read())
                 conn.commit()
-                print("Database schema successfully initialized")
+                logger.info("Database schema successfully initialized")
         except Exception as e:
+            error_msg = f"Failed to initialize database: {str(e)}"
+            logger.error(error_msg)
             conn.rollback()
-            raise Exception(f"Failed to initialize database: {str(e)}")
+            raise Exception(error_msg)
 
 def get_categories():
     """Get all categories from the database."""
+    logger.debug("Fetching categories from database")
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT * FROM categories ORDER BY name")
-            return cur.fetchall()
+            categories = cur.fetchall()
+            logger.debug(f"Retrieved {len(categories)} categories")
+            return categories
 
 def add_recipe(title, description, instructions, cooking_time, servings, category_id, ingredients_data):
     """Add a new recipe with ingredients."""
+    logger.info(f"Adding new recipe: {title}")
     with get_db_connection() as conn:
         try:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -81,12 +105,14 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
                 
                 result = cur.fetchone()
                 if not result:
-                    raise Exception("Failed to create recipe")
+                    error_msg = "Failed to create recipe: no id returned"
+                    logger.error(error_msg)
+                    raise Exception(error_msg)
                 recipe_id = result['id']
+                logger.debug(f"Created recipe with id: {recipe_id}")
                 
                 # Process ingredients
                 for ingredient in ingredients_data:
-                    # Check if ingredient exists, if not create it
                     cur.execute("SELECT id FROM ingredients WHERE name = %s", (ingredient['name'],))
                     result = cur.fetchone()
                     
@@ -95,25 +121,30 @@ def add_recipe(title, description, instructions, cooking_time, servings, categor
                                   (ingredient['name'],))
                         result = cur.fetchone()
                         if not result:
-                            raise Exception("Failed to create ingredient")
+                            error_msg = f"Failed to create ingredient: {ingredient['name']}"
+                            logger.error(error_msg)
+                            raise Exception(error_msg)
                         ingredient_id = result['id']
                     else:
                         ingredient_id = result['id']
                     
-                    # Add to recipe_ingredients
                     cur.execute("""
                         INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, unit)
                         VALUES (%s, %s, %s, %s)
                     """, (recipe_id, ingredient_id, ingredient['quantity'], ingredient['unit']))
                 
                 conn.commit()
+                logger.info(f"Successfully added recipe {title} with id {recipe_id}")
                 return recipe_id
         except Exception as e:
+            error_msg = f"Failed to add recipe: {str(e)}"
+            logger.error(error_msg)
             conn.rollback()
-            raise Exception(f"Failed to add recipe: {str(e)}")
+            raise Exception(error_msg)
 
 def get_recipes():
     """Get all recipes with their categories."""
+    logger.debug("Fetching all recipes")
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
@@ -122,10 +153,13 @@ def get_recipes():
                 LEFT JOIN categories c ON r.category_id = c.id
                 ORDER BY r.title
             """)
-            return cur.fetchall()
+            recipes = cur.fetchall()
+            logger.debug(f"Retrieved {len(recipes)} recipes")
+            return recipes
 
 def get_recipe_ingredients(recipe_id):
     """Get ingredients for a specific recipe."""
+    logger.debug(f"Fetching ingredients for recipe {recipe_id}")
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
@@ -134,10 +168,13 @@ def get_recipe_ingredients(recipe_id):
                 JOIN ingredients i ON ri.ingredient_id = i.id
                 WHERE ri.recipe_id = %s
             """, (recipe_id,))
-            return cur.fetchall()
+            ingredients = cur.fetchall()
+            logger.debug(f"Retrieved {len(ingredients)} ingredients for recipe {recipe_id}")
+            return ingredients
 
 def get_recipe(recipe_id):
     """Get a specific recipe with all its details."""
+    logger.debug(f"Fetching recipe {recipe_id}")
     with get_db_connection() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("""
@@ -150,5 +187,8 @@ def get_recipe(recipe_id):
             
             if recipe:
                 recipe['ingredients'] = get_recipe_ingredients(recipe_id)
+                logger.debug(f"Successfully retrieved recipe {recipe_id}")
+            else:
+                logger.warning(f"Recipe {recipe_id} not found")
             
             return recipe
