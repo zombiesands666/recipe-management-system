@@ -32,8 +32,47 @@ st.markdown("""
         font-size: 16px !important;
     }
     
-    /* Bottom navigation bar for mobile */
-    @media (max-width: 768px) {
+    /* Android tablet specific styles */
+    @media (min-width: 768px) and (max-width: 1024px) {
+        #pwa-install {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            margin: 0 -1rem;
+            border-radius: 0;
+            padding: 20px;
+            background-color: #f63366;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        #pwa-install button {
+            padding: 15px 30px;
+            font-size: 18px;
+            width: auto;
+            min-width: 200px;
+            margin: 10px auto;
+            display: block;
+        }
+        .install-header {
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+        #install-instructions {
+            font-size: 16px !important;
+            line-height: 1.5;
+            margin: 15px 0;
+        }
+        /* Larger touch targets for tablets */
+        .recipe-card {
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .bottom-nav {
+            display: none; /* Hide bottom nav on tablets */
+        }
+    }
+    
+    /* Mobile styles */
+    @media (max-width: 767px) {
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -60,7 +99,6 @@ st.markdown("""
             background-color: #f63366;
             color: white;
         }
-        /* Add padding to main content to prevent overlap with bottom nav */
         .main-content {
             padding-bottom: 70px;
         }
@@ -97,6 +135,26 @@ st.markdown("""
     #pwa-install button:hover {
         transform: translateY(-2px);
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    /* Android-specific install button */
+    #android-install-button {
+        display: none;
+        background-color: #f63366;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        margin: 20px auto;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+    #android-install-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
     }
     
     /* Offline status indicator */
@@ -136,7 +194,7 @@ st.markdown("""
 # Enhanced PWA install prompt with platform-specific instructions
 install_prompt = """
 <div id="pwa-install" style="display: none;">
-    <h3 style="margin: 0;">📱 Install Recipe App</h3>
+    <h3 class="install-header" style="margin: 0;">📱 Install Recipe App</h3>
     <p style="margin: 10px 0;">Get the best experience with our app!</p>
     <div id="install-instructions" style="font-size: 14px; margin: 10px 0;">
         <!-- Instructions will be inserted here by JavaScript -->
@@ -144,11 +202,16 @@ install_prompt = """
     <button onclick="installPWA()" id="install-button">Install App</button>
 </div>
 
+<button id="android-install-button" onclick="installPWA()" style="display: none;">
+    Install Recipe App on Your Tablet
+</button>
+
 <script>
 let deferredPrompt;
 const installDiv = document.getElementById('pwa-install');
 const instructionsDiv = document.getElementById('install-instructions');
 const installButton = document.getElementById('install-button');
+const androidInstallButton = document.getElementById('android-install-button');
 
 // Platform-specific instructions
 function updateInstallInstructions() {
@@ -158,12 +221,32 @@ function updateInstallInstructions() {
     if (/iPhone|iPad|iPod/.test(ua)) {
         instructions = '1. Tap the share button (📤)<br>2. Scroll down and tap "Add to Home Screen"';
         installButton.style.display = 'none';
+        androidInstallButton.style.display = 'none';
     } else if (/Android/.test(ua)) {
-        instructions = 'Tap "Install App" when prompted';
+        const isTablet = window.innerWidth >= 768 && window.innerWidth <= 1024;
+        if (isTablet) {
+            instructions = 'Install our app for the best tablet experience:';
+            androidInstallButton.style.display = 'block';
+            installButton.style.display = 'none';
+        } else {
+            instructions = 'Tap "Install App" to add to your home screen';
+            androidInstallButton.style.display = 'none';
+            installButton.style.display = 'block';
+        }
     } else {
         instructions = 'Click "Install App" to add to your desktop';
+        androidInstallButton.style.display = 'none';
     }
     instructionsDiv.innerHTML = instructions;
+}
+
+// Check if app is installed
+async function checkIfInstalled() {
+    if ('getInstalledRelatedApps' in navigator) {
+        const relatedApps = await navigator.getInstalledRelatedApps();
+        return relatedApps.some(app => app.id === 'com.recipe.app');
+    }
+    return false;
 }
 
 // Check online status and update UI
@@ -178,13 +261,18 @@ function updateOnlineStatus() {
 
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
+window.addEventListener('resize', updateInstallInstructions);
 
 // PWA installation
-window.addEventListener('beforeinstallprompt', (e) => {
+window.addEventListener('beforeinstallprompt', async (e) => {
     e.preventDefault();
     deferredPrompt = e;
-    installDiv.style.display = 'block';
-    updateInstallInstructions();
+    
+    const isInstalled = await checkIfInstalled();
+    if (!isInstalled) {
+        installDiv.style.display = 'block';
+        updateInstallInstructions();
+    }
 });
 
 function installPWA() {
@@ -193,25 +281,71 @@ function installPWA() {
         deferredPrompt.userChoice.then((choiceResult) => {
             if (choiceResult.outcome === 'accepted') {
                 console.log('User accepted the install prompt');
+                // Hide both install buttons after successful installation
+                installDiv.style.display = 'none';
+                androidInstallButton.style.display = 'none';
             }
             deferredPrompt = null;
-            installDiv.style.display = 'none';
         });
     }
 }
 
-// Register service worker
+// Register service worker with better error handling
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/static/service-worker.js')
-            .then(registration => {
-                console.log('ServiceWorker registration successful');
-            })
-            .catch(error => {
-                console.error('ServiceWorker registration failed:', error);
+    window.addEventListener('load', async () => {
+        try {
+            const registration = await navigator.serviceWorker.register('/static/service-worker.js');
+            console.log('ServiceWorker registration successful with scope:', registration.scope);
+            
+            // Check if service worker is active
+            if (registration.active) {
+                console.log('Service Worker is active');
+            }
+            
+            // Listen for service worker updates
+            registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                console.log('Service Worker update found!');
+                
+                newWorker.addEventListener('statechange', () => {
+                    console.log('Service Worker state changed to:', newWorker.state);
+                });
             });
+            
+        } catch (error) {
+            console.error('ServiceWorker registration failed:', error);
+            // Show error message to user
+            const offlineStatus = document.getElementById('offline-status');
+            offlineStatus.innerHTML = 'Failed to enable offline support. Please refresh the page.';
+            offlineStatus.style.display = 'block';
+        }
     });
 }
+
+// Verify manifest and icons are loaded correctly
+async function verifyPWAAssets() {
+    try {
+        // Check manifest
+        const manifestResponse = await fetch('/static/manifest.json');
+        if (!manifestResponse.ok) {
+            console.error('Failed to load manifest.json');
+        }
+        
+        // Check icons
+        const iconSizes = ['192x192', '512x512'];
+        for (const size of iconSizes) {
+            const iconResponse = await fetch(`/static/icon-${size}.png`);
+            if (!iconResponse.ok) {
+                console.error(`Failed to load icon-${size}.png`);
+            }
+        }
+    } catch (error) {
+        console.error('Error verifying PWA assets:', error);
+    }
+}
+
+// Run verification on page load
+verifyPWAAssets();
 
 // Add touch event listeners for swipe gestures on recipe cards
 document.addEventListener('DOMContentLoaded', () => {
@@ -250,9 +384,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 # Add the install prompt to the sidebar at the top
 st.sidebar.markdown(install_prompt, unsafe_allow_html=True)
-
-# Rest of your Streamlit app code remains the same...
-# (Previous code for recipe management functionality)
 
 # Add bottom navigation for mobile
 bottom_nav = """
