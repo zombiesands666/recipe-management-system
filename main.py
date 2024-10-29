@@ -3,6 +3,7 @@ from database import (
     init_db, get_categories, add_recipe, get_recipes,
     get_recipe, get_recipe_ingredients
 )
+from conversions import UnitConverter
 import os
 from streamlit.components.v1 import html
 
@@ -44,7 +45,7 @@ st.title("Recipe Management System")
 st.write("Welcome to your personal recipe collection!")
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Choose an action", ["View Recipes", "Add New Recipe"])
+page = st.sidebar.selectbox("Choose an action", ["View Recipes", "Add New Recipe", "Unit Converter"])
 
 if page == "View Recipes":
     st.subheader("Your Recipes")
@@ -159,6 +160,64 @@ elif page == "Add New Recipe":
                     st.experimental_rerun()
                 except Exception as e:
                     st.error(f"Failed to add recipe: {e}")
+
+elif page == "Unit Converter":
+    st.subheader("Measurement Converter")
+    st.write("Convert between different units of measurement commonly used in recipes.")
+    
+    # Get supported units
+    supported_units = UnitConverter.get_supported_units()
+    
+    # Create conversion form
+    with st.form("converter_form"):
+        # Select measurement type
+        measurement_type = st.selectbox(
+            "Select measurement type",
+            list(supported_units.keys())
+        )
+        
+        # Create three columns for the conversion inputs
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            value = st.number_input("Value", min_value=0.0, step=0.1)
+        
+        with col2:
+            from_unit = st.selectbox(
+                "From unit",
+                supported_units[measurement_type]
+            )
+        
+        with col3:
+            to_unit = st.selectbox(
+                "To unit",
+                supported_units[measurement_type]
+            )
+        
+        convert_button = st.form_submit_button("Convert")
+        
+        if convert_button:
+            try:
+                result = UnitConverter.convert(value, from_unit, to_unit)
+                st.success(f"{value} {from_unit} = {result:.2f} {to_unit}")
+            except ValueError as e:
+                st.error(str(e))
+    
+    # Add conversion table
+    st.subheader("Common Conversion Reference")
+    st.write("Here are some common recipe measurement conversions:")
+    
+    conversion_table = """
+    | From | To | Conversion |
+    |------|-----|------------|
+    | 1 cup | milliliters | 236.59 ml |
+    | 1 tablespoon | milliliters | 14.79 ml |
+    | 1 teaspoon | milliliters | 4.93 ml |
+    | 1 gram | ounces | 0.035 oz |
+    | 1 pound | grams | 453.59 g |
+    | 1 ounce | grams | 28.35 g |
+    """
+    st.markdown(conversion_table)
 
 # Add PWA install prompt
 install_prompt = """
