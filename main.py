@@ -7,6 +7,13 @@ from database import (
 from conversions import UnitConverter
 import os
 
+# Configure the page (must be first Streamlit command)
+st.set_page_config(
+    page_title="Recipe Management System",
+    page_icon="🍳",
+    layout="wide"
+)
+
 def load_template():
     with open('templates/base.html', 'r') as f:
         return components.html(f.read(), height=0)
@@ -19,13 +26,6 @@ try:
     init_db()
 except Exception as e:
     st.error(f"Database initialization failed: {e}")
-
-# Configure the page
-st.set_page_config(
-    page_title="Recipe Management System",
-    page_icon="🍳",
-    layout="wide"
-)
 
 # Custom CSS for mobile responsiveness
 st.markdown("""
