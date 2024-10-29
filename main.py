@@ -5,7 +5,6 @@ from database import (
 )
 from conversions import UnitConverter
 import os
-from streamlit.components.v1 import html
 
 # Initialize the database
 try:
@@ -41,13 +40,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Initialize session state if not exists
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = "View Recipes"
+
 st.title("Recipe Management System")
-st.write("Welcome to your personal recipe collection!")
 
 # Sidebar navigation
-page = st.sidebar.selectbox("Choose an action", ["View Recipes", "Add New Recipe", "Unit Converter"])
+st.sidebar.title("Navigation")
+selected_page = st.sidebar.radio(
+    "Choose a page",
+    ["View Recipes", "Add New Recipe", "Unit Converter"],
+    key="navigation"
+)
 
-if page == "View Recipes":
+# Main content
+if selected_page == "View Recipes":
     st.subheader("Your Recipes")
     
     # Add search functionality
@@ -64,7 +72,6 @@ if page == "View Recipes":
         recipes = get_recipes()
         filtered_recipes = recipes
         
-        # Apply search filters
         if search_query:
             filtered_recipes = [
                 recipe for recipe in filtered_recipes 
@@ -80,7 +87,6 @@ if page == "View Recipes":
         if not filtered_recipes:
             st.info("No recipes found matching your search criteria.")
         
-        # Use columns for grid layout on larger screens
         cols = st.columns(2)
         for idx, recipe in enumerate(filtered_recipes):
             with cols[idx % 2]:
@@ -100,7 +106,7 @@ if page == "View Recipes":
     except Exception as e:
         st.error(f"Failed to load recipes: {e}")
 
-elif page == "Add New Recipe":
+elif selected_page == "Add New Recipe":
     st.subheader("Add New Recipe")
     
     with st.form("recipe_form"):
@@ -113,12 +119,10 @@ elif page == "Add New Recipe":
         with col2:
             servings = st.number_input("Servings", min_value=1)
         
-        # Category selection
         categories = get_categories()
         category_options = {cat['name']: cat['id'] for cat in categories}
         category = st.selectbox("Category", options=list(category_options.keys()))
         
-        # Dynamic ingredient input
         st.subheader("Ingredients")
         num_ingredients = st.number_input("Number of ingredients", min_value=1, max_value=20)
         ingredients_data = []
@@ -161,53 +165,45 @@ elif page == "Add New Recipe":
                 except Exception as e:
                     st.error(f"Failed to add recipe: {e}")
 
-elif page == "Unit Converter":
+elif selected_page == "Unit Converter":
     st.subheader("Measurement Converter")
     st.write("Convert between different units of measurement commonly used in recipes.")
     
-    # Get supported units
     supported_units = UnitConverter.get_supported_units()
     
-    # Create conversion form
-    with st.form("converter_form"):
-        # Select measurement type
-        measurement_type = st.selectbox(
-            "Select measurement type",
-            list(supported_units.keys())
-        )
-        
-        # Create three columns for the conversion inputs
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            value = st.number_input("Value", min_value=0.0, step=0.1)
-        
-        with col2:
-            from_unit = st.selectbox(
-                "From unit",
-                supported_units[measurement_type]
-            )
-        
-        with col3:
-            to_unit = st.selectbox(
-                "To unit",
-                supported_units[measurement_type]
-            )
-        
-        convert_button = st.form_submit_button("Convert")
-        
-        if convert_button:
-            try:
-                result = UnitConverter.convert(value, from_unit, to_unit)
-                st.success(f"{value} {from_unit} = {result:.2f} {to_unit}")
-            except ValueError as e:
-                st.error(str(e))
+    measurement_type = st.selectbox(
+        "Select measurement type",
+        list(supported_units.keys())
+    )
     
-    # Add conversion table
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        value = st.number_input("Value", min_value=0.0, step=0.1)
+    
+    with col2:
+        from_unit = st.selectbox(
+            "From unit",
+            supported_units[measurement_type]
+        )
+    
+    with col3:
+        to_unit = st.selectbox(
+            "To unit",
+            supported_units[measurement_type]
+        )
+    
+    if st.button("Convert"):
+        try:
+            result = UnitConverter.convert(value, from_unit, to_unit)
+            st.success(f"{value} {from_unit} = {result:.2f} {to_unit}")
+        except ValueError as e:
+            st.error(str(e))
+    
     st.subheader("Common Conversion Reference")
     st.write("Here are some common recipe measurement conversions:")
     
-    conversion_table = """
+    st.markdown("""
     | From | To | Conversion |
     |------|-----|------------|
     | 1 cup | milliliters | 236.59 ml |
@@ -216,40 +212,4 @@ elif page == "Unit Converter":
     | 1 gram | ounces | 0.035 oz |
     | 1 pound | grams | 453.59 g |
     | 1 ounce | grams | 28.35 g |
-    """
-    st.markdown(conversion_table)
-
-# Add PWA install prompt
-install_prompt = """
-<div id="install-prompt" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); 
-     background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 1000;">
-    <p style="margin: 0;">Install Recipe App on your device!</p>
-    <button onclick="installPWA()" style="background-color: #f63366; color: white; border: none; 
-            padding: 8px 16px; border-radius: 5px; margin-top: 10px; cursor: pointer;">
-        Install
-    </button>
-</div>
-<script>
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('install-prompt').style.display = 'block';
-});
-
-function installPWA() {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-            if (choiceResult.outcome === 'accepted') {
-                console.log('User accepted the install prompt');
-            }
-            deferredPrompt = null;
-            document.getElementById('install-prompt').style.display = 'none';
-        });
-    }
-}
-</script>
-"""
-
-st.components.v1.html(install_prompt, height=100)
+    """)
