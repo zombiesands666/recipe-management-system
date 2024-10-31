@@ -1,6 +1,4 @@
--- Create tables for recipe management system
-
--- Users table
+-- Users table (must be first for proper references)
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(100) NOT NULL UNIQUE,
@@ -8,17 +6,13 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Add user_id to recipes table
-ALTER TABLE IF NOT EXISTS recipes 
-ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);
-
 -- Categories table
 CREATE TABLE IF NOT EXISTS categories (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE
 );
 
--- Recipes table (updated with user_id)
+-- Recipes table (with user_id included)
 CREATE TABLE IF NOT EXISTS recipes (
     id SERIAL PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
