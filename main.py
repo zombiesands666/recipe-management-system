@@ -73,7 +73,7 @@ if not is_authenticated():
                 if username and password:
                     if login_user(username, password):
                         st.success("Successfully logged in!")
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
                         st.error("Invalid username or password")
                 else:
@@ -94,7 +94,7 @@ if not is_authenticated():
                     elif register_user(new_username, new_password):
                         st.success("Registration successful! Please login.")
                         st.session_state.current_page = "Login"
-                        st.experimental_rerun()
+                        st.rerun()
                     else:
                         st.error("Username already exists")
                 else:
@@ -105,7 +105,7 @@ else:
     st.sidebar.title(f"Welcome, {st.session_state.username}!")
     if st.sidebar.button("Logout"):
         logout_user()
-        st.experimental_rerun()
+        st.rerun()
     
     selected_page = st.sidebar.radio(
         "Choose a page",
@@ -229,7 +229,7 @@ else:
                             user_id=get_current_user_id()
                         )
                         st.success("Recipe added successfully!")
-                        st.experimental_rerun()
+                        st.rerun()
                     except Exception as e:
                         st.error(f"Failed to add recipe: {e}")
 
